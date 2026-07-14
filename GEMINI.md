@@ -358,6 +358,57 @@ Track productivity improvements
 
 Export reports
 
+
+# 🗺️ Master Implementation Plan & Roadmap
+
+TestLens AI is an advanced automotive infotainment test management and productivity ecosystem featuring tailored workflows and scope-restricted collaboration.
+
+---
+
+## 👥 User Roles & Permissions (RBAC)
+* **Tester (Consultant):** Executes test cases, uploads sheets, generates JIRA bug drafts, logs daily reports, and updates live bench blocking states.
+* **Function Owner (FO):** Reviews bench statuses, accesses the KPI calculator, and reviews draft bug suggestions *strictly* filtered by their assigned scope (e.g., Privacy, eSIM, User Focused).
+* **Error Manager (EM):** Monitors active bench blockers to track software/hardware issues and accesses KPI calculations.
+* **Test Manager (TM):** Configures static test bench hardware parameters (VIN, IP, CAN channels) and reviews team KPI metrics.
+
+---
+
+## Phase 1: JIRA Parser & Smart Bug Suggestions (Tester & Scope-Locked FO)
+* **Backend (FastAPI):**
+    * Regex splitting engine to parse JIRA's composite cells using strict prefix matching (`P1`, `A1`, `E1`/`Er1` etc.).
+    * Scope-based filtering logic ensuring draft bug suggestions are only exposed to the Tester who generated them and the Function Owner assigned to that specific scope (e.g., Privacy & Security, eSIM & Connectivity).
+* **Frontend (React):**
+    * Interactive step-failure modal. Tester selects the failed action step to generate a structured JIRA bug markdown draft.
+    * Shared Drafts Dashboard where the assigned Function Owner can review, comment on, or approve the drafted bug before JIRA submission.
+
+---
+
+## Phase 2: Daily Report Generator (Tester Exclusive)
+* **Core Feature:** Tester form to compile daily execution, bug retest, and bench task metrics.
+* **Telemetry:** Secretly logs daily points and activity metrics into the DB for monthly KPI evaluation.
+
+---
+
+## Phase 3: Dedicated Knowledge Hub (Tester Exclusive)
+* **Core Feature:** Brand new page featuring a searchable abbreviation glossary (e.g., *KPM -> Konzern Problem Management*) and an unstructured document search (PDFs, Word) using RAG-lite.
+
+---
+
+## Phase 4: Test Bench Reporting Status (All Roles - Tiered Permissions)
+* **Configuration (Test Manager Only):** Edit static specifications (VIN, MIB/OCU versions, SOP, Remote Laptop, Frame Grabber IP, CAN Channel).
+* **Live Monitoring & Blockers (All Roles):** Testers toggle active blockers (gray globe, putty offline on Serial 2, KL15 relay failure). All roles can view the live statuses.
+
+---
+
+## Phase 5: Monthly KPI Calculator Chatbot (All Roles)
+* **Core Feature:** Conversational chatbot calculating monthly scores using exact task weights:
+    * **Hard Tasks ($H$):** 4 points per 30 minutes ($8\text{ pts/hour}$).
+    * **Medium Tasks ($M$):** 4 points per 60 minutes ($4\text{ pts/hour}$).
+    * **Easy Tasks ($E$):** 2 points per 60 minutes ($2\text{ pts/hour}$).
+* **Teams Calendar Vision:** Upload zone for Microsoft Teams calendar screenshots parsed via OCR.
+
+---
+
 📊 Current Progress
 
 ✅ Defined

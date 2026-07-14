@@ -63,6 +63,7 @@ export const DashboardPage: React.FC = () => {
       setFiles((prev) => [response.data, ...prev]);
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 4000);
+      fetchAnalytics();
     } catch (err: any) {
       setUploadError(err.response?.data?.detail || 'Failed to upload and parse file.');
     } finally {
@@ -72,20 +73,65 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  // Mock analytics data for the Manager Dashboard
+  // Analytics data state
+  const [analytics, setAnalytics] = useState<{
+    total_cases: number;
+    automation_readiness: number;
+    system_accuracy: number;
+    category_distribution: { name: string; count: number; percentage: number }[];
+    difficulty_distribution: { easy: number; medium: number; hard: number };
+  } | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  // Fetch analytics summary
+  const fetchAnalytics = async () => {
+    setLoadingAnalytics(true);
+    setAnalyticsError(null);
+    try {
+      const response = await api.get('/analytics/summary');
+      setAnalytics(response.data);
+    } catch (err: any) {
+      console.error('Failed to fetch analytics summary:', err);
+      setAnalyticsError(err.response?.data?.detail || 'Failed to load analytics.');
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      fetchAnalytics();
+    }
+  }, [activeTab]);
+
+  const getCategoryColor = (name: string): string => {
+    switch (name) {
+      case 'Infotainment Apps': return '#6366f1';
+      case 'eSIM & Connectivity': return '#a855f7';
+      case 'Privacy & Security': return '#06b6d4';
+      case 'Vehicle Networking': return '#10b981';
+      default: return '#6b7280';
+    }
+  };
+
   const metrics = {
-    totalTestCases: files.reduce((acc, f) => acc + f.row_count, 0) || 1240,
-    automationReady: 78.4,
-    categories: [
-      { name: 'Infotainment Apps', count: 450, percentage: 36, color: '#6366f1' },
-      { name: 'eSIM & Connectivity', count: 320, percentage: 26, color: '#a855f7' },
-      { name: 'Privacy & Security', count: 280, percentage: 22, color: '#06b6d4' },
-      { name: 'Vehicle Networking', count: 190, percentage: 16, color: '#10b981' },
-    ],
+    totalTestCases: analytics ? analytics.total_cases : 0,
+    automationReady: analytics ? analytics.automation_readiness : 0.0,
+    systemAccuracy: analytics ? analytics.system_accuracy : 94.2,
+    categories: (analytics?.category_distribution || [
+      { name: 'Infotainment Apps', count: 0, percentage: 0 },
+      { name: 'eSIM & Connectivity', count: 0, percentage: 0 },
+      { name: 'Privacy & Security', count: 0, percentage: 0 },
+      { name: 'Vehicle Networking', count: 0, percentage: 0 },
+    ]).map(cat => ({
+      ...cat,
+      color: getCategoryColor(cat.name)
+    })),
     difficulty: {
-      easy: 45, // %
-      medium: 35,
-      hard: 20
+      easy: analytics ? analytics.difficulty_distribution.easy : 0,
+      medium: analytics ? analytics.difficulty_distribution.medium : 0,
+      hard: analytics ? analytics.difficulty_distribution.hard : 0
     }
   };
 
@@ -251,114 +297,173 @@ export const DashboardPage: React.FC = () => {
 
         {activeTab === 'analytics' && (
           <div className="animate-fade-in" style={styles.tabContent}>
-            {/* Quick Metrics */}
-            <div style={styles.metricsGrid}>
-              <div className="glass" style={styles.metricCard}>
-                <div style={styles.metricHeader}>
-                  <Layers size={22} color="var(--color-primary)" />
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>TOTAL CASES</span>
-                </div>
-                <h2 style={styles.metricVal}>{metrics.totalTestCases}</h2>
-                <div style={styles.metricFooter}>Across all parsed sheets</div>
+            {loadingAnalytics && !analytics ? (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '5rem 0',
+                gap: '16px'
+              }}>
+                <Loader2 className="spin" size={40} color="var(--color-primary)" />
+                <p style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Analyzing test case dataset...</p>
               </div>
-
-              <div className="glass" style={styles.metricCard}>
-                <div style={styles.metricHeader}>
-                  <Activity size={22} color="var(--color-accent)" />
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>AUTOMATION READINESS</span>
-                </div>
-                <h2 style={{ ...styles.metricVal, color: 'var(--color-accent)' }}>{metrics.automationReady}%</h2>
-                <div style={styles.metricFooter}>High automation potential detected</div>
+            ) : analyticsError ? (
+              <div style={styles.alertError}>
+                <AlertCircle size={18} style={{ marginRight: '8px' }} />
+                <span>{analyticsError}</span>
               </div>
+            ) : (
+              <>
+                {metrics.totalTestCases === 0 && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '1rem 1.5rem',
+                    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                    border: '1px solid rgba(99, 102, 241, 0.2)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--text-secondary)',
+                    fontSize: '0.9rem'
+                  }}>
+                    <AlertCircle size={18} color="var(--color-primary)" />
+                    <span>No test cases parsed yet. Upload Excel files as a <strong>Consultant</strong> to generate intelligent insights.</span>
+                  </div>
+                )}
 
-              <div className="glass" style={styles.metricCard}>
-                <div style={styles.metricHeader}>
-                  <UserCheck size={22} color="var(--color-secondary)" />
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>SYSTEM ACCURACY</span>
+                {/* Quick Metrics */}
+                <div style={styles.metricsGrid}>
+                  <div className="glass" style={styles.metricCard}>
+                    <div style={styles.metricHeader}>
+                      <Layers size={22} color="var(--color-primary)" />
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>TOTAL CASES</span>
+                    </div>
+                    <h2 style={styles.metricVal}>{metrics.totalTestCases}</h2>
+                    <div style={styles.metricFooter}>Across all parsed sheets</div>
+                  </div>
+
+                  <div className="glass" style={styles.metricCard}>
+                    <div style={styles.metricHeader}>
+                      <Activity size={22} color="var(--color-accent)" />
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>AUTOMATION READINESS</span>
+                    </div>
+                    <h2 style={{ ...styles.metricVal, color: 'var(--color-accent)' }}>{metrics.automationReady}%</h2>
+                    <div style={styles.metricFooter}>High automation potential detected</div>
+                  </div>
+
+                  <div className="glass" style={styles.metricCard}>
+                    <div style={styles.metricHeader}>
+                      <UserCheck size={22} color="var(--color-secondary)" />
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>SYSTEM ACCURACY</span>
+                    </div>
+                    <h2 style={styles.metricVal}>{metrics.systemAccuracy}%</h2>
+                    <div style={styles.metricFooter}>Classification reliability index</div>
+                  </div>
                 </div>
-                <h2 style={styles.metricVal}>94.2%</h2>
-                <div style={styles.metricFooter}>Classification reliability index</div>
-              </div>
-            </div>
 
-            {/* Visual Analytics */}
-            <div style={styles.analyticsLayout}>
-              <div className="glass" style={styles.chartCard}>
-                <h3>Test Category Distribution</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                  Auto-categorized by AI engine (TF-IDF + Classifier)
-                </p>
-                <div style={styles.chartContainer}>
-                  {metrics.categories.map((cat, i) => (
-                    <div key={i} style={styles.barRow}>
-                      <div style={styles.barLabel}>{cat.name}</div>
-                      <div style={styles.barTrack}>
-                        <div
-                          style={{
-                            ...styles.barFill,
-                            width: `${cat.percentage}%`,
-                            backgroundColor: cat.color,
-                          }}
-                        ></div>
+                {/* Visual Analytics */}
+                <div style={styles.analyticsLayout}>
+                  <div className="glass" style={styles.chartCard}>
+                    <h3>Test Category Distribution</h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                      Auto-categorized by AI engine (TF-IDF + Classifier)
+                    </p>
+                    <div style={styles.chartContainer}>
+                      {metrics.categories.map((cat, i) => (
+                        <div key={i} style={styles.barRow}>
+                          <div style={styles.barLabel}>{cat.name}</div>
+                          <div style={styles.barTrack}>
+                            <div
+                              style={{
+                                ...styles.barFill,
+                                width: `${cat.percentage}%`,
+                                backgroundColor: cat.color,
+                              }}
+                            ></div>
+                          </div>
+                          <div style={styles.barValue}>{cat.count} ({cat.percentage}%)</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="glass" style={styles.chartCard}>
+                    <h3>Test Case Difficulty Split</h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                      Based on execution step count and preconditions
+                    </p>
+                    <div style={styles.difficultyContainer}>
+                      <div style={styles.difficultyBar}>
+                        {metrics.totalTestCases === 0 ? (
+                          <div
+                            style={{
+                              ...styles.diffSegment,
+                              width: '100%',
+                              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                              color: 'var(--text-muted)',
+                            }}
+                          >
+                            No Data Available
+                          </div>
+                        ) : (
+                          <>
+                            {metrics.difficulty.easy > 0 && (
+                              <div
+                                style={{
+                                  ...styles.diffSegment,
+                                  width: `${metrics.difficulty.easy}%`,
+                                  backgroundColor: 'var(--color-accent)',
+                                }}
+                              >
+                                Easy ({metrics.difficulty.easy}%)
+                              </div>
+                            )}
+                            {metrics.difficulty.medium > 0 && (
+                              <div
+                                style={{
+                                  ...styles.diffSegment,
+                                  width: `${metrics.difficulty.medium}%`,
+                                  backgroundColor: 'var(--color-primary)',
+                                }}
+                              >
+                                Medium ({metrics.difficulty.medium}%)
+                              </div>
+                            )}
+                            {metrics.difficulty.hard > 0 && (
+                              <div
+                                style={{
+                                  ...styles.diffSegment,
+                                  width: `${metrics.difficulty.hard}%`,
+                                  backgroundColor: 'var(--color-secondary)',
+                                }}
+                              >
+                                Hard ({metrics.difficulty.hard}%)
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
-                      <div style={styles.barValue}>{cat.count} ({cat.percentage}%)</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="glass" style={styles.chartCard}>
-                <h3>Test Case Difficulty Split</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                  Based on execution step count and preconditions
-                </p>
-                <div style={styles.difficultyContainer}>
-                  <div style={styles.difficultyBar}>
-                    <div
-                      style={{
-                        ...styles.diffSegment,
-                        width: `${metrics.difficulty.easy}%`,
-                        backgroundColor: 'var(--color-accent)',
-                      }}
-                    >
-                      Easy ({metrics.difficulty.easy}%)
-                    </div>
-                    <div
-                      style={{
-                        ...styles.diffSegment,
-                        width: `${metrics.difficulty.medium}%`,
-                        backgroundColor: 'var(--color-primary)',
-                      }}
-                    >
-                      Medium ({metrics.difficulty.medium}%)
-                    </div>
-                    <div
-                      style={{
-                        ...styles.diffSegment,
-                        width: `${metrics.difficulty.hard}%`,
-                        backgroundColor: 'var(--color-secondary)',
-                      }}
-                    >
-                      Hard ({metrics.difficulty.hard}%)
-                    </div>
-                  </div>
-                  <div style={styles.diffLegend}>
-                    <div style={styles.legendItem}>
-                      <span style={{ ...styles.dot, backgroundColor: 'var(--color-accent)' }}></span>
-                      <span>Easy: Standard verification flows</span>
-                    </div>
-                    <div style={styles.legendItem}>
-                      <span style={{ ...styles.dot, backgroundColor: 'var(--color-primary)' }}></span>
-                      <span>Medium: Moderate precondition dependencies</span>
-                    </div>
-                    <div style={styles.legendItem}>
-                      <span style={{ ...styles.dot, backgroundColor: 'var(--color-secondary)' }}></span>
-                      <span>Hard: Multi-bench/complex network requirements</span>
+                      <div style={styles.diffLegend}>
+                        <div style={styles.legendItem}>
+                          <span style={{ ...styles.dot, backgroundColor: 'var(--color-accent)' }}></span>
+                          <span>Easy: Standard verification flows</span>
+                        </div>
+                        <div style={styles.legendItem}>
+                          <span style={{ ...styles.dot, backgroundColor: 'var(--color-primary)' }}></span>
+                          <span>Medium: Moderate precondition dependencies</span>
+                        </div>
+                        <div style={styles.legendItem}>
+                          <span style={{ ...styles.dot, backgroundColor: 'var(--color-secondary)' }}></span>
+                          <span>Hard: Multi-bench/complex network requirements</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         )}
       </main>

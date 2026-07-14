@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import auth, upload
+from app.api import auth, upload, analytics
 from app.db.database import engine, Base
 
 # Configure logging
@@ -56,6 +56,7 @@ app.add_middleware(
 # Register routes
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(upload.router, prefix=settings.API_V1_STR)
+app.include_router(analytics.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():

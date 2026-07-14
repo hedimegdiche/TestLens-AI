@@ -75,3 +75,15 @@ async def upload_excel_file(
     db.refresh(db_file)
 
     return db_file
+
+@router.get("/history", response_model=list[schemas.FileResponse])
+def get_upload_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # Managers see all, consultants see their own uploads
+    if current_user.role == "manager":
+        return db.query(models.TestCaseFile).order_by(models.TestCaseFile.uploaded_at.desc()).all()
+    else:
+        return db.query(models.TestCaseFile).filter(models.TestCaseFile.uploaded_by == current_user.id).order_by(models.TestCaseFile.uploaded_at.desc()).all()
+

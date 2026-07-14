@@ -33,3 +33,21 @@ class FileResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class CategoryMetric(BaseModel):
+    name: str
+    count: int
+    percentage: float
+
+class DifficultyDistribution(BaseModel):
+    easy: float
+    medium: float
+    hard: float
+
+class AnalyticsSummaryResponse(BaseModel):
+    total_cases: int
+    automation_readiness: float
+    system_accuracy: float
+    category_distribution: list[CategoryMetric]
+    difficulty_distribution: DifficultyDistribution
+
